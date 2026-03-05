@@ -21,8 +21,8 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: 'var(--theme-primary, #4f46e5)', // Dynamic Primary Color
-                        secondary: '#f97316', // Orange 500
+                        primary: 'var(--theme-primary, #4f46e5)', 
+                        secondary: '#f97316', 
                         surface: '#f8fafc',
                     },
                     boxShadow: {
@@ -320,7 +320,7 @@
                         <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center relative overflow-hidden">
                             <div class="absolute -right-4 -bottom-4 text-green-50 text-5xl z-0"><i class="fa-solid fa-wallet"></i></div>
                             <p class="text-[11px] font-bold text-gray-500 mb-1 relative z-10">رصيد المحفظة</p>
-                            <span class="font-black text-green-500 text-2xl relative z-10"><span id="prof-wallet">0.00</span> <span class="text-xs">JOD</span></span>
+                            <span class="font-black text-green-50 text-2xl relative z-10"><span id="prof-wallet">0.00</span> <span class="text-xs">JOD</span></span>
                         </div>
                         <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center relative overflow-hidden">
                             <div class="absolute -left-4 -bottom-4 text-orange-50 text-5xl z-0"><i class="fa-solid fa-star"></i></div>
@@ -465,8 +465,14 @@
                 
                 <div class="flex justify-between items-center mb-6 relative z-10 pt-2">
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-xl border border-white/20">
-                            <i class="fa-solid fa-motorcycle text-white"></i>
+                        <!-- Captain Image Upload Area -->
+                        <div class="relative file-upload-btn w-12 h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-xl border border-white/20 overflow-hidden group shadow-sm">
+                            <img id="captain-avatar-img" src="" class="hidden w-full h-full object-cover">
+                            <i id="captain-avatar-icon" class="fa-solid fa-motorcycle text-white"></i>
+                            <input type="file" accept="image/*" onchange="window.uploadCaptainImage(this)" class="absolute inset-0 opacity-0 cursor-pointer z-10" title="تغيير الصورة الشخصية">
+                            <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+                                <i class="fa-solid fa-camera text-white text-xs"></i>
+                            </div>
                         </div>
                         <div>
                             <p class="text-[10px] text-gray-400 font-bold mb-0.5">بطل قتيبة اكسبرس</p>
@@ -870,7 +876,7 @@
         const getDocRef = (colName, docId) => doc(db, 'artifacts', appId, 'public', 'data', colName, docId);
 
         // ==================== GEMINI API INTEGRATION ✨ ====================
-        const geminiApiKey = ""; // Platform will inject API Key automatically
+        const geminiApiKey = ""; 
         
         window.callGeminiAPI = async function(promptText, systemPromptText = "") {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
@@ -882,7 +888,7 @@
             }
             
             let retries = 5;
-            let delays = [1000, 2000, 4000, 8000, 16000]; // Exponential backoff
+            let delays = [1000, 2000, 4000, 8000, 16000]; 
             
             for (let i = 0; i < retries; i++) {
                 try {
@@ -902,7 +908,6 @@
             return null;
         };
 
-        // ميزة 1: مساعد الاقتراحات الذكي للزبون
         window.askAIForRecommendation = async function() {
             const inputEl = document.getElementById('ai-recommend-input');
             const outputEl = document.getElementById('ai-recommend-output');
@@ -914,7 +919,6 @@
                 return;
             }
 
-            // تحضير البيانات المتوفرة في المنيو
             const menuContext = window.allMenu.filter(m => !m.isSoldOut).map(m => `${m.name} (السعر: ${m.price} JOD)`).join(', ');
             const systemPrompt = `أنت مساعد طعام ذكي لتطبيق أردني اسمه 'قتيبة اكسبرس'. وظيفتك هي مساعدة المستخدم في اختيار وجبته.
             قائمة الطعام المتاحة حالياً هي: ${menuContext || 'لا يوجد أصناف حالياً'}.
@@ -941,7 +945,6 @@
             }
         };
 
-        // ميزة 2: ترتيب الطلبات العشوائية بالذكاء الاصطناعي للكباتن
         window.formatOrderWithAI = async function() {
             const textArea = document.getElementById('custom-item-name');
             const text = textArea.value.trim();
@@ -1063,6 +1066,150 @@
         };
 
         // ==================== APP FUNCTIONS ====================
+        
+        // 1. الدالة المفقودة: إرسال الإشعارات
+        window.sendAppNotification = async function(targetId, msg, image = null) {
+            try {
+                await addDoc(getCollection('notifications'), {
+                    recipientId: targetId,
+                    message: msg,
+                    image: image,
+                    read: false,
+                    timestamp: serverTimestamp()
+                });
+            } catch (e) {
+                console.error("Notification Error:", e);
+            }
+        };
+
+        // 2. الدوال المفقودة: المحادثة (الدردشة)
+        window.openChat = function(orderId, targetPhone) {
+            window.currentChatOrderId = orderId;
+            const chatModal = document.getElementById('chat-modal');
+            const callBtn = document.getElementById('chat-call-btn');
+            if (targetPhone && targetPhone !== '0000') {
+                callBtn.href = `tel:${targetPhone}`;
+                callBtn.classList.remove('hidden');
+            } else {
+                callBtn.classList.add('hidden');
+            }
+            chatModal.classList.remove('hidden');
+            const order = window.allOrders.find(o => o.id === orderId);
+            window.renderChatMessages(order ? (order.chat || []) : []);
+        };
+
+        window.closeChat = function() {
+            window.currentChatOrderId = null;
+            document.getElementById('chat-modal').classList.add('hidden');
+        };
+
+        window.renderChatMessages = function(chatArray) {
+            const container = document.getElementById('chat-messages');
+            if (!container) return;
+            if (chatArray.length === 0) {
+                container.innerHTML = '<div class="flex-1 flex flex-col items-center justify-center opacity-50"><i class="fa-regular fa-comments text-4xl mb-2 text-gray-400"></i><p class="text-sm font-bold text-gray-500">لا توجد رسائل بعد. ابدأ المحادثة!</p></div>';
+                return;
+            }
+            container.innerHTML = chatArray.map(msg => {
+                const isMe = msg.sender === window.currentUserRole;
+                return `
+                <div class="flex ${isMe ? 'justify-end' : 'justify-start'} w-full">
+                    <div class="max-w-[75%] p-3 rounded-2xl text-sm font-medium shadow-sm relative ${isMe ? 'bg-primary text-white rounded-bl-none' : 'bg-white text-gray-800 rounded-br-none border border-gray-100'}">
+                        ${msg.text}
+                        <span class="block text-[8px] mt-1 text-right opacity-70">${msg.time || ''}</span>
+                    </div>
+                </div>`;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        };
+
+        // 3. الدوال المفقودة: المتجر والسلة
+        window.openStore = function(storeId, storeName) {
+            window.currentStoreViewId = storeId;
+            document.getElementById('store-menu-title').innerText = storeName;
+            
+            const store = window.allStaff.find(s => s.id === storeId);
+            if(store && store.logo) {
+                document.getElementById('store-menu-icon').innerHTML = `<img src="${store.logo}" class="w-full h-full object-cover">`;
+            } else {
+                document.getElementById('store-menu-icon').innerHTML = `<i class="fa-solid fa-store"></i>`;
+            }
+            
+            // Empty the search field when opening a store so all products load
+            const searchEl = document.getElementById('cust-search');
+            if (searchEl) searchEl.value = '';
+            
+            window.renderCustomer();
+        };
+
+        window.closeStoreMenu = function() {
+            window.currentStoreViewId = null;
+            // Empty the search field when returning to the store list
+            const searchEl = document.getElementById('cust-search');
+            if (searchEl) searchEl.value = '';
+            window.renderCustomer();
+        };
+
+        window.removeFromCart = function(index) {
+            window.customerCart.splice(index, 1);
+            window.showToast('تم حذف العنصر من السلة', 'info');
+            window.renderCartView();
+            if(window.customerCart.length === 0) {
+                document.getElementById('cart-badge')?.classList.add('hidden');
+            }
+        };
+
+        // 4. الدوال المفقودة: صورة الكابتن وتحديثها
+        window.uploadCaptainImage = async function(input) {
+            if (input.files && input.files[0] && window.currentUserRole === 'captain') {
+                const file = input.files[0];
+                const uploadedUrl = await window.uploadImageToCloudinary(file);
+                if(uploadedUrl) {
+                    try {
+                        await updateDoc(getDocRef('staff', window.currentUserData.id), { logo: uploadedUrl });
+                        window.currentUserData.logo = uploadedUrl;
+                        window.showToast('تم تحديث صورتك الشخصية بنجاح!', 'success');
+                        window.updateCaptainUI();
+                    } catch(err) { window.showToast('فشل حفظ الصورة', 'error'); }
+                }
+            }
+        };
+
+        window.updateCaptainUI = function() {
+             if(window.currentUserRole === 'captain' && window.currentUserData) {
+                 const imgEl = document.getElementById('captain-avatar-img');
+                 const iconEl = document.getElementById('captain-avatar-icon');
+                 if(window.currentUserData.logo) {
+                     imgEl.src = window.currentUserData.logo;
+                     imgEl.classList.remove('hidden');
+                     iconEl.classList.add('hidden');
+                 } else {
+                     imgEl.classList.add('hidden');
+                     iconEl.classList.remove('hidden');
+                 }
+             }
+        };
+
+        // 5. الدوال المفقودة: التقييم بعد الاستلام
+        window.selectRating = function(type, val) {
+            if (type === 'cap') {
+                window.captStarVal = val;
+                document.querySelectorAll('#rating-captain-stars i').forEach(el => {
+                    el.classList.toggle('active', parseInt(el.dataset.val) <= val);
+                    el.classList.toggle('text-gray-300', parseInt(el.dataset.val) > val);
+                });
+            } else {
+                window.merchStarVal = val;
+                document.querySelectorAll('#rating-merchant-stars i').forEach(el => {
+                    el.classList.toggle('active', parseInt(el.dataset.val) <= val);
+                    el.classList.toggle('text-gray-300', parseInt(el.dataset.val) > val);
+                });
+            }
+        };
+
+        window.closeRatingModal = function() {
+            document.getElementById('rating-modal').classList.add('hidden');
+        };
 
         window.setBtnLoading = function(btnId, isLoading, originalText = '') {
             const btn = document.getElementById(btnId);
@@ -1219,6 +1366,7 @@
                         window.currentUserData = { id: 'demo_capt', name: 'كابتن تجريبي', role: 'captain', walletBalance: 20, ratingCount: 1, ratingSum: 5, isOnline: true };
                         const cn = document.getElementById('captain-name-display'); if(cn) cn.innerText = 'تجريبي';
                         window.updateCaptainWalletUI();
+                        window.updateCaptainUI(); // Update UI for captain
                         window.showView('captain');
                     } else if (role === 'support') {
                         window.currentUserData = { id: 'demo_sup', name: 'دعم فني تجريبي', role: 'support' };
@@ -1257,6 +1405,7 @@
                         const cn = document.getElementById('captain-name-display'); if(cn) cn.innerText = window.currentUserData.name.split(' ')[0]; 
                         const cr = document.getElementById('captain-rating-display'); if(cr) cr.innerText = window.currentUserData.ratingCount ? (window.currentUserData.ratingSum / window.currentUserData.ratingCount).toFixed(1) : '5.0'; 
                         window.updateCaptainWalletUI(); 
+                        window.updateCaptainUI(); // Update UI for captain
                         window.showView('captain'); 
                     } 
                     window.updateNotificationsUI(); 
@@ -1377,7 +1526,15 @@
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap' }).addTo(window.leafletMap); 
                 
                 const custIcon = L.divIcon({ html: '<div class="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-red-500 border-2 border-red-100 text-2xl relative"><div class="absolute -bottom-1 w-2 h-2 bg-red-500 rounded-full"></div>📍</div>', className: '', iconSize: [48, 48], iconAnchor: [24, 48] });
-                const capIcon = L.divIcon({ html: '<div class="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-primary border-2 border-indigo-100 text-2xl relative"><div class="absolute -bottom-1 w-2 h-2 bg-primary rounded-full"></div>🛵</div>', className: '', iconSize: [48, 48], iconAnchor: [24, 48] });
+                
+                const captain = window.allStaff.find(s => s.id === order.captainId);
+                let capIconHtml = `<div class="absolute -bottom-1 w-2 h-2 bg-primary rounded-full z-20"></div>`;
+                if (captain && captain.logo) {
+                    capIconHtml += `<img src="${captain.logo}" class="w-full h-full object-cover rounded-full">`;
+                } else {
+                    capIconHtml += `🛵`;
+                }
+                const capIcon = L.divIcon({ html: `<div class="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-primary border-2 border-indigo-100 text-2xl relative overflow-hidden">${capIconHtml}</div>`, className: '', iconSize: [48, 48], iconAnchor: [24, 48] });
 
                 window.customerMarker = L.marker([custLat, custLng], {icon: custIcon}).addTo(window.leafletMap);
                 window.captainMarker = L.marker([capLat, capLng], {icon: capIcon}).addTo(window.leafletMap);
@@ -1770,8 +1927,12 @@
                         storesList.innerHTML = merchants.map(m => {
                             const isOffline = !m.isOnline;
                             let logoHtml = m.logo ? `<img src="${m.logo}" class="w-16 h-16 rounded-2xl object-cover shadow-sm mb-3">` : `<div class="w-16 h-16 bg-gray-50 text-gray-400 rounded-2xl mb-3 flex items-center justify-center">${window.categoryIcons[m.businessType] || window.categoryIcons['restaurant']}</div>`;
+                            
+                            // Safe name encoding to avoid breaking onclick attributes with quotes
+                            let safeName = m.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                            
                             return `
-                            <div onclick="${isOffline ? '' : `window.openStore('${m.id}', '${m.name}')`}" class="bg-white p-4 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col items-center justify-center relative transition-all duration-300 ${isOffline ? 'opacity-60 grayscale' : 'cursor-pointer hover:shadow-float hover:-translate-y-1 hover:border-primary/20'} group"> 
+                            <div onclick="${isOffline ? '' : `window.openStore('${m.id}', '${safeName}')`}" class="bg-white p-4 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col items-center justify-center relative transition-all duration-300 ${isOffline ? 'opacity-60 grayscale' : 'cursor-pointer hover:shadow-float hover:-translate-y-1 hover:border-primary/20'} group"> 
                                 ${isOffline ? '<span class="absolute top-3 right-3 bg-red-50 text-red-500 text-[9px] px-2 py-0.5 rounded-lg font-black z-10">مغلق</span>' : '<span class="absolute top-3 right-3 w-2 h-2 bg-green-400 rounded-full z-10 shadow-sm shadow-green-400/50"></span>'} 
                                 ${logoHtml} 
                                 <h4 class="font-black text-gray-800 text-sm text-center leading-snug group-hover:text-primary transition-colors">${m.name}</h4> 
@@ -1846,11 +2007,14 @@
                     list.innerHTML = myOrders.map(order => {
                         const canTrack = ['on_the_way', 'picking_up', 'on_the_way_back'].includes(order.status) && order.captainId;
                         const timelineHtml = window.getOrderTimelineUI(order.status, order.type);
+                        
+                        const captainData = window.allStaff.find(s => s.id === order.captainId);
+                        const captBadge = (captainData && captainData.logo) ? `<span class="inline-flex items-center gap-1 text-[10px] bg-indigo-50 text-primary px-2 py-1 rounded-md font-bold ml-2"><img src="${captainData.logo}" class="w-4 h-4 rounded-full object-cover"> كابتن التوصيل</span>` : '';
 
                         return `
                         <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 relative mb-4">
                             <div class="flex justify-between items-center mb-3">
-                                <span class="font-black text-gray-900 text-sm">طلب #${order.id.substring(0,5)}</span>
+                                <span class="font-black text-gray-900 text-sm">طلب #${order.id.substring(0,5)} ${captBadge}</span>
                                 <span class="text-[10px] px-3 py-1 rounded-lg font-black ${window.statusMap[order.status]?.color || 'bg-gray-100 text-gray-700'} border border-current border-opacity-20">${window.statusMap[order.status]?.text || 'غير معروف'}</span>
                             </div>
                             <p class="text-xs font-bold text-gray-600 mb-3 leading-relaxed">${(order.item || '').replace(/\n/g, '<br>')}</p>
@@ -1926,6 +2090,9 @@
                             else actionBtn = `<p class="text-xs text-center text-gray-500 font-bold bg-gray-50 border border-gray-100 p-3 rounded-xl">حالة الطلب: ${window.statusMap[order.status]?.text}</p>`;
                         }
 
+                        const captainData = window.allStaff.find(s => s.id === order.captainId);
+                        const captBadge = (captainData && captainData.logo) ? `<span class="inline-flex items-center gap-1 text-[10px] bg-indigo-50 text-primary px-2 py-1 rounded-md font-bold ml-2"><img src="${captainData.logo}" class="w-4 h-4 rounded-full object-cover"> الكابتن</span>` : '';
+
                         return `
                         <div class="bg-white p-5 rounded-3xl shadow-sm border-2 ${order.status === 'pending' ? 'border-orange-400' : 'border-gray-100'} mb-4 relative overflow-hidden">
                             ${order.status === 'pending' ? '<div class="absolute top-0 right-0 w-2 h-full bg-orange-400"></div>' : ''}
@@ -1933,6 +2100,7 @@
                                 <div>
                                     <span class="font-black text-gray-900 text-lg block mb-1">${order.customerName}</span>
                                     <span class="text-[10px] bg-gray-100 px-2 py-1 rounded-md text-gray-500 font-black tracking-wider">ORDER #${order.id.substring(0,5)}</span>
+                                    ${captBadge}
                                 </div> 
                                 <button onclick="window.openChat('${order.id}', '${order.customerPhone}')" class="w-10 h-10 bg-indigo-50 text-primary rounded-xl flex items-center justify-center text-lg hover:bg-primary hover:text-white transition-colors"><i class="fa-solid fa-comment-dots"></i></button>
                             </div>
@@ -2347,8 +2515,29 @@
         window.toggleBan = async function(col, id, stat) { if(window.currentUserRole !== 'admin') return; try { await updateDoc(getDocRef(col, id), { banned: !stat }); window.showToast(!stat ? 'تم الحظر 🚫' : 'تم فك الحظر ✅', 'success'); } catch(e) {} };
         window.requestPointsConversion = async function() { if((window.currentUserData.loyaltyPoints || 0) < 1000) return window.showToast('عذراً، يجب جمع 1000 نقطة على الأقل', 'error'); try { await addDoc(getCollection('point_requests'), { customerId: window.currentUserData.uid, customerName: window.currentUserData.name, points: 1000, money: 1.00, status: 'pending', timestamp: serverTimestamp() }); window.showToast('تم رفع طلب استبدال النقاط للإدارة', 'success'); } catch(e) {} };
         window.rejectPointRequest = async function(reqId) { await updateDoc(getDocRef('point_requests', reqId), { status: 'rejected' }); window.showToast('تم رفض الطلب', 'info'); };
-        window.confirmTopUp = async function(isPos) { if(window.currentUserRole !== 'admin' || !window.topUpTargetId) return; const amount = parseFloat(document.getElementById('topup-amount').value); if(!amount || isNaN(amount) || amount <= 0) return window.showToast('الرجاء إدخال مبلغ صحيح', 'error'); try { await updateDoc(getDocRef('staff', window.topUpTargetId), { walletBalance: isPos ? (window.topUpCurrentBal + amount) : (window.topUpCurrentBal - amount) }); window.showToast(isPos ? 'تم شحن المحفظة بنجاح' : 'تم خصم العقوبة', 'success'); window.closeTopUpModal(); } catch(e) {} };
-        window.exportCSV = function() { let csv = 'ID,Customer,Item,Price,Status\n'; window.allOrders.forEach(o => csv += `${o.id},${o.customerName},${(o.item||'').replace(/,/g,'-').replace(/\n/g,' ')},${o.price},${o.status}\n`); const blob = new Blob(["\ufeff", csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "orders.csv"; link.click(); };
+        
+        window.confirmTopUp = async function(isPos) { 
+            if(window.currentUserRole !== 'admin' || !window.topUpTargetId) return; 
+            const amount = parseFloat(document.getElementById('topup-amount').value); 
+            if(!amount || isNaN(amount) || amount <= 0) return window.showToast('الرجاء إدخال مبلغ صحيح', 'error'); 
+            try { 
+                await updateDoc(getDocRef('staff', window.topUpTargetId), { 
+                    walletBalance: isPos ? (window.topUpCurrentBal + amount) : (window.topUpCurrentBal - amount) 
+                }); 
+                window.showToast(isPos ? 'تم شحن المحفظة بنجاح' : 'تم خصم العقوبة', 'success'); 
+                window.closeTopUpModal(); 
+            } catch(e) {} 
+        };
+        
+        window.exportCSV = function() { 
+            let csv = 'ID,Customer,Item,Price,Status\n'; 
+            window.allOrders.forEach(o => csv += `${o.id},${o.customerName},${(o.item||'').replace(/,/g,'-').replace(/\n/g,' ')},${o.price},${o.status}\n`); 
+            const blob = new Blob(["\ufeff", csv], { type: 'text/csv;charset=utf-8;' }); 
+            const link = document.createElement("a"); 
+            link.href = URL.createObjectURL(blob); 
+            link.download = "orders.csv"; 
+            link.click(); 
+        };
         
         window.openAdminEdit = function(colName, docId) { const modal = document.getElementById('admin-edit-modal'); if(!modal) return; const target = colName === 'users' ? window.allUsers.find(u => u.id === docId) : window.allStaff.find(s => s.id === docId); if(!target) return; document.getElementById('edit-user-id').value = target.id; document.getElementById('edit-user-col').value = colName; document.getElementById('edit-user-name').value = target.name; document.getElementById('edit-user-phone').value = target.phone || ''; document.getElementById('edit-user-wallet').value = target.walletBalance || 0; modal.classList.remove('hidden'); };
         window.closeAdminEdit = function() { document.getElementById('admin-edit-modal')?.classList.add('hidden'); };
