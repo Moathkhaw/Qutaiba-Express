@@ -57,7 +57,7 @@
         
         @keyframes pulse-ring { 0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); } 100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); } }
         .live-indicator { animation: pulse-ring 2s infinite; }
-
+        
         .nav-active { color: #4f46e5 !important; }
         .nav-active i { transform: translateY(-4px) scale(1.15); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: #4f46e5; }
         .nav-item i { transition: transform 0.3s ease; }
@@ -76,6 +76,9 @@
         .timeline-line-active { background-color: #4f46e5; transition: height 0.5s ease; }
         .pb-safe { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
         .mb-safe { margin-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+
+        .gemini-sparkle { animation: sparklePulse 1.5s infinite alternate; }
+        @keyframes sparklePulse { 0% { transform: scale(1); opacity: 0.8; filter: hue-rotate(0deg); } 100% { transform: scale(1.2); opacity: 1; filter: hue-rotate(45deg); } }
     </style>
 </head>
 <body class="text-gray-800 antialiased flex justify-center h-screen overflow-hidden">
@@ -757,6 +760,12 @@
                         <div class="absolute right-4 top-4 text-gray-400 group-focus-within:text-orange-500"><i class="fa-solid fa-list-check"></i></div>
                         <textarea id="custom-item-name" rows="4" class="w-full pr-11 pl-4 py-4 rounded-2xl bg-gray-50 border border-gray-100 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-all resize-none font-medium" placeholder="اكتب طلباتك بالتفصيل هنا..."></textarea>
                     </div>
+                    
+                    <!-- AI Order Formatter Button ✨ -->
+                    <button onclick="window.formatOrderWithAI()" id="btn-ai-format" class="text-[11px] text-purple-600 font-bold bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-xl flex items-center justify-center gap-2 w-full transition-colors border border-purple-100">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> رتّب طلبي بالذكاء الاصطناعي ✨
+                    </button>
+
                     <button id="btn-custom-order" onclick="window.confirmCustomOrder()" class="w-full bg-gradient-to-r from-secondary to-orange-400 text-white font-black py-4 rounded-2xl shadow-lg shadow-orange-500/30 text-lg mt-4 transition-transform active:scale-95 flex justify-center items-center gap-2">إرسال الطلب للكباتن 🚀</button>
                 </div>
             </div>
@@ -859,6 +868,110 @@
 
         const getCollection = (colName) => collection(db, 'artifacts', appId, 'public', 'data', colName);
         const getDocRef = (colName, docId) => doc(db, 'artifacts', appId, 'public', 'data', colName, docId);
+
+        // ==================== GEMINI API INTEGRATION ✨ ====================
+        const geminiApiKey = ""; // Platform will inject API Key automatically
+        
+        window.callGeminiAPI = async function(promptText, systemPromptText = "") {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: promptText }] }],
+            };
+            if (systemPromptText) {
+                payload.systemInstruction = { parts: [{ text: systemPromptText }] };
+            }
+            
+            let retries = 5;
+            let delays = [1000, 2000, 4000, 8000, 16000]; // Exponential backoff
+            
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                    const data = await response.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "عذراً، لم أتمكن من فهم الطلب بشكل جيد.";
+                } catch (err) {
+                    if (i === retries - 1) return null;
+                    await new Promise(r => setTimeout(r, delays[i]));
+                }
+            }
+            return null;
+        };
+
+        // ميزة 1: مساعد الاقتراحات الذكي للزبون
+        window.askAIForRecommendation = async function() {
+            const inputEl = document.getElementById('ai-recommend-input');
+            const outputEl = document.getElementById('ai-recommend-output');
+            const btnEl = document.getElementById('btn-ai-recommend');
+            
+            const queryText = inputEl.value.trim();
+            if(!queryText) {
+                window.showToast("يرجى كتابة ما تشتهي أولاً!", "error");
+                return;
+            }
+
+            // تحضير البيانات المتوفرة في المنيو
+            const menuContext = window.allMenu.filter(m => !m.isSoldOut).map(m => `${m.name} (السعر: ${m.price} JOD)`).join(', ');
+            const systemPrompt = `أنت مساعد طعام ذكي لتطبيق أردني اسمه 'قتيبة اكسبرس'. وظيفتك هي مساعدة المستخدم في اختيار وجبته.
+            قائمة الطعام المتاحة حالياً هي: ${menuContext || 'لا يوجد أصناف حالياً'}.
+            التعليمات:
+            1. اقرأ طلب المستخدم ورد عليه بلهجة أردنية ودية وعفوية.
+            2. اقترح عليه وجبة أو وجبتين فقط من القائمة المتاحة لتناسب طلبه تماماً.
+            3. لا تذكر أي أصناف غير موجودة في القائمة المتاحة.
+            4. اجعل الرد قصيراً جداً ومباشراً (لا تتجاوز 3 أسطر).`;
+
+            btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+            btnEl.disabled = true;
+            outputEl.classList.remove('hidden');
+            outputEl.innerHTML = `<div class="flex items-center gap-2 text-indigo-100"><i class="fa-solid fa-robot animate-pulse"></i> جاري التفكير واختيار أطيب الأكل...</div>`;
+
+            const aiResponse = await window.callGeminiAPI(queryText, systemPrompt);
+            
+            btnEl.innerHTML = `اسألني`;
+            btnEl.disabled = false;
+
+            if(aiResponse) {
+                outputEl.innerHTML = `<p class="text-white">${aiResponse}</p>`;
+            } else {
+                outputEl.innerHTML = `<span class="text-red-200">عذراً، المساعد الذكي غير متاح حالياً. يرجى المحاولة لاحقاً.</span>`;
+            }
+        };
+
+        // ميزة 2: ترتيب الطلبات العشوائية بالذكاء الاصطناعي للكباتن
+        window.formatOrderWithAI = async function() {
+            const textArea = document.getElementById('custom-item-name');
+            const text = textArea.value.trim();
+            const btn = document.getElementById('btn-ai-format');
+
+            if(!text) {
+                window.showToast("اكتب طلباتك أولاً عشان أرتبها!", "error");
+                return;
+            }
+
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري الترتيب والتنسيق السحري... ✨`;
+            btn.disabled = true;
+
+            const systemPrompt = `أنت مساعد ذكي لتطبيق توصيل طلبات. سيقوم المستخدم بإدخال نص عشوائي يحتوي على قائمة مشتريات.
+            مهمتك هي قراءة النص، واستخراج الأغراض المطلوبة، وإعادة كتابتها في قائمة نقطية (Bullet points) واضحة جداً وسهلة القراءة للكابتن (رجل التوصيل) الذي سيقوم بشرائها.
+            تنبيه هام جداً: لا تكتب أي كلمة خارج القائمة النقطية (لا تكتب مرحباً أو تفضل أو غيره)، فقط القائمة المرتبة.`;
+
+            const aiResponse = await window.callGeminiAPI(`الطلبات العشوائية: ${text}`, systemPrompt);
+            
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+
+            if(aiResponse) {
+                textArea.value = aiResponse.trim();
+                window.showToast("تم الترتيب السحري لطلباتك! ✨", "success");
+            } else {
+                window.showToast("حدث خطأ أثناء الاتصال بالذكاء الاصطناعي.", "error");
+            }
+        };
 
         // ==================== GLOBAL STATE ====================
         window.currentUser = null; window.currentUserData = null; window.currentUserRole = '';
@@ -2110,7 +2223,7 @@
                         <span class="text-xs font-bold text-gray-700">${name}</span>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" onchange="window.toggleAdminCategory('${key}', this.checked)" class="sr-only peer" ${isChecked}>
-                            <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                            <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                         </label>
                     </div>`;
             }
